@@ -1,6 +1,9 @@
 package com.example.bot.memo;
 
-import com.example.bot.memo.command.BaseCommand;
+import com.example.bot.memo.command.CallbackData;
+import com.example.bot.memo.command.IBaseCommand;
+import com.example.bot.memo.command.RemindCommand;
+import com.example.bot.memo.command.ServiceCommand;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -14,25 +17,22 @@ public class MemoBot extends TelegramLongPollingBot {
     private static final String START_DESCR = "send the welcome message and describe the bot' targets";
     private static final String START_FULLDESCR = "Welcome to the ReminderBot! It can remind you about smth by resending" +
             " your message in the specified date and time to you. To see the command list please use /help.";
-
     private static final String HELP_ID = "/help";
     private static final String HELP_DESCR = "shows all commands. Use /help [command] for more info";
-
     private static final String REMIND_ID = "/remind_me";
     private static final String REMIND_DESCR = "resends the specified message in specified date and time to you";
 
-
     private final String USERNAME;
-    private final HashMap<String, BaseCommand> commandRegister;
+    private final HashMap<String, IBaseCommand> commandRegister;
 
     public MemoBot(String token, String username) {
         super(token);
 
         this.USERNAME = username;
         this.commandRegister = new HashMap<>();
-        this.commandRegister.put(START_ID, new BaseCommand(START_ID, START_DESCR, START_FULLDESCR));
-        this.commandRegister.put(REMIND_ID, new BaseCommand(REMIND_ID, REMIND_DESCR));
-        BaseCommand helpCommand = new BaseCommand(HELP_ID, HELP_DESCR);
+        this.commandRegister.put(START_ID, new ServiceCommand(START_ID, START_DESCR, START_FULLDESCR));
+        this.commandRegister.put(REMIND_ID, new RemindCommand(REMIND_ID, REMIND_DESCR));
+        ServiceCommand helpCommand = new ServiceCommand(HELP_ID, HELP_DESCR);
         this.commandRegister.put(HELP_ID, helpCommand);
         helpCommand.setFullDescription(describeCommands());
         System.out.println("I'm REMEMBER BOT! Nice to meet you;)");
@@ -43,7 +43,7 @@ public class MemoBot extends TelegramLongPollingBot {
         return commandRegister.values().stream().reduce(
                 str,
                 (s, cmd) -> s
-                        .append(cmd.getCommand()).append(" ")
+                        .append(cmd.getName()).append(" ")
                         .append(cmd.getDescription()).append("\n").append("\n"),
                 StringBuilder::append).toString();
     }
@@ -51,26 +51,35 @@ public class MemoBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasCallbackQuery()) {
-            System.out.println("Callback command msg:");
-            System.out.println(update.getCallbackQuery().getData());
-            //TODO: execute callback
+            String callbackText = update.getCallbackQuery().getData();
+            CallbackData data = JsonUtil.fromJson(callbackText);
+            Optional<IBaseCommand> optCommand = getCommand(data.getCommandName());
+            optCommand.ifPresent(iBaseCommand -> {
+                long chatId = update.getCallbackQuery().getMessage().getChatId();
+                iBaseCommand.callback(this, chatId, data);
+            });
         } else if (update.hasMessage()) {
             Message msg = update.getMessage();
-            Optional<BaseCommand> optCommand = getCommand(msg.getText());
+            String text = msg.getText();
+            Optional<IBaseCommand> optCommand = getCommand(text);
             if (optCommand.isPresent()) {
-                BaseCommand command = optCommand.get();
-                command.execute(this, msg.getChatId());
-            } else {
+                IBaseCommand command = optCommand.get();
+                String args = getArgs(text, command);
+                command.execute(this, msg.getChatId(), args);
+            } else if (!tryInputMemo(msg)){
                 System.out.println("Non_command msg:");
                 System.out.println(msg.getText());
             }
-
-
         }
     }
 
-    private Optional<BaseCommand> getCommand(String msg) {
-        BaseCommand command = null;
+    private boolean tryInputMemo(Message msg) {
+        RemindCommand cmd = (RemindCommand) commandRegister.get(REMIND_ID);
+        return cmd.isInputContinue(this, msg);
+    }
+
+    private Optional<IBaseCommand> getCommand(String msg) {
+        IBaseCommand command = null;
         if (msg.startsWith("/")) {
             String name = msg.split(" ")[0];
             if (commandRegister.containsKey(name)) {
@@ -78,6 +87,10 @@ public class MemoBot extends TelegramLongPollingBot {
             }
         }
         return Optional.ofNullable(command);
+    }
+
+    private String getArgs(String str, IBaseCommand command) {
+        return str.replace(command.getName(), "");
     }
 
     @Override
