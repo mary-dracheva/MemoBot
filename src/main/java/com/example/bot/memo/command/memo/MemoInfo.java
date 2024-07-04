@@ -1,4 +1,4 @@
-package com.example.bot.memo.command;
+package com.example.bot.memo.command.memo;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +57,9 @@ public class MemoInfo {
     public void setTime(String timeStr) {
         LocalTime time = LocalTime.parse(timeStr, timeFormatter);
         setTime(time);
+    }
 
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

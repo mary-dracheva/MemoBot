@@ -2,7 +2,7 @@ package com.example.bot.memo;
 
 import com.example.bot.memo.command.CallbackData;
 import com.example.bot.memo.command.IBaseCommand;
-import com.example.bot.memo.command.RemindCommand;
+import com.example.bot.memo.command.memo.RemindCommand;
 import com.example.bot.memo.command.ServiceCommand;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.objects.Message;
@@ -75,7 +75,7 @@ public class MemoBot extends TelegramLongPollingBot {
 
     private boolean tryInputMemo(Message msg) {
         RemindCommand cmd = (RemindCommand) commandRegister.get(REMIND_ID);
-        return cmd.isInputContinue(this, msg);
+        return cmd.tryContinueInput(this, msg);
     }
 
     private Optional<IBaseCommand> getCommand(String msg) {
