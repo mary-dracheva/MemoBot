@@ -15,6 +15,8 @@ import org.telegram.telegrambots.meta.bots.AbsSender;
 import java.time.LocalDate;
 import java.util.*;
 
+import static java.lang.Thread.sleep;
+
 public class RemindCommand extends BaseCommand {
     private HashMap<Long, MemoInfo> tempMemos;
     private Reminder reminder;
@@ -34,7 +36,7 @@ public class RemindCommand extends BaseCommand {
                 memos.forEach(memo -> sendMessage(sender,
                         new SendMessage(String.valueOf(memo.getChatId()), memo.getMessage())));
                 try {
-                    Thread.sleep(1000);
+                    sleep(1000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -108,18 +110,18 @@ public class RemindCommand extends BaseCommand {
 
     public boolean tryContinueInput(AbsSender sender, Message msg) {
         long chatId = msg.getChatId();
-        boolean isInput = tempMemos.containsKey(chatId);
-        if (isInput) {
+        boolean isInputInProcess = tempMemos.containsKey(chatId);
+        if (isInputInProcess) {
             MemoInfo memo = tempMemos.get(chatId);
-            handleInputToMemo(memo, msg);
+            appendTmpMemo(memo, msg);
         }
-        return isInput;
+        return isInputInProcess;
     }
 
-    private void handleInputToMemo(MemoInfo memo, Message msg) {
+    private void appendTmpMemo(MemoInfo memo, Message msg) {
         String text = msg.getText();
         if (memo.getMessage().isEmpty()) {
-            memo.setMessage(msg.getText());
+            memo.setMessage(text);
             askWhenRemind(memo.getChatId());
         } else if (memo.hasDate()) {
             memo.setTime(text);

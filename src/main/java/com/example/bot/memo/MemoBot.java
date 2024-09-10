@@ -39,7 +39,7 @@ public class MemoBot extends TelegramLongPollingBot {
     }
 
     private String describeCommands() {
-        StringBuilder str = new StringBuilder();
+        StringBuilder str = new StringBuilder("Available commands:\n");
         return commandRegister.values().stream().reduce(
                 str,
                 (s, cmd) -> s
@@ -67,8 +67,9 @@ public class MemoBot extends TelegramLongPollingBot {
                 String args = getArgs(text, command);
                 command.execute(this, msg.getChatId(), args);
             } else if (!tryInputMemo(msg)){
-                System.out.println("Non_command msg:");
+                System.out.print("Non_command msg:");
                 System.out.println(msg.getText());
+                commandRegister.get(HELP_ID).execute(this, msg.getChatId(), "");
             }
         }
     }
